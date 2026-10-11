@@ -10,6 +10,16 @@ export default defineConfig({
     inlineStylesheets: "auto",
   },
   vite: {
+    server: {
+      // Local backend facade (rrr serve, loopback :8000). Same-origin /api
+      // keeps the browser out of CORS; no such proxying in production.
+      proxy: {
+        "/api": {
+          target: "http://127.0.0.1:8000",
+          changeOrigin: true,
+        },
+      },
+    },
     css: {
       preprocessorOptions: {
         scss: {

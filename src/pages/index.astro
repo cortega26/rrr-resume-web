@@ -1,0 +1,250 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Resume QA — find what can make your résumé fail"
+  description="Project artifact measurements to a deterministic review. The browser never decides; the private backend owns every verdict."
+>
+  <main id="main-content" class="container">
+    <h1>Resume QA</h1>
+    <p>
+      You never get a second chance to make a good first impression. Paste
+      artifact measurements, run them against the private backend, and read
+      the deterministic verdict. The browser renders a server-owned decision.
+    </p>
+    <p id="backend-status" class="form-hint" role="status">Checking backend…</p>
+
+    <section class="card" aria-labelledby="preview-heading">
+      <div class="card-header">
+        <h2 id="preview-heading" class="card-title">Review preview</h2>
+        <p class="card-subtitle">
+          Requires the loopback backend (<code>rrr serve</code> on this machine).
+        </p>
+      </div>
+      <form id="preview-form">
+        <div class="form-group">
+          <label class="form-label" for="review-id">Review id</label>
+          <input
+            class="form-input"
+            id="review-id"
+            name="review-id"
+            type="text"
+            value="review_local_001"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="measurements">Measurements (JSON)</label>
+          <textarea
+            class="form-textarea"
+            id="measurements"
+            name="measurements"
+            rows="12"
+            spellcheck="false"
+          ></textarea>
+          <p class="form-hint">
+            Same shape the deterministic build writes into
+            <code>qa-report.json</code>.
+          </p>
+        </div>
+        <div class="flex gap-sm">
+          <button class="btn btn-primary" type="submit">Run preview</button>
+          <button class="btn btn-secondary" type="button" id="example-pass">
+            Passing example
+          </button>
+          <button class="btn btn-secondary" type="button" id="example-fail">
+            Failing example
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section id="result" class="card" hidden aria-live="polite">
+      <div class="card-header flex justify-between items-center">
+        <h2 class="card-title">Result</h2>
+        <span id="result-status" class="badge badge-neutral">—</span>
+      </div>
+      <p id="result-summary"></p>
+      <h3>Findings</h3>
+      <div id="findings"></div>
+      <h3>Gate results</h3>
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Gate</th>
+            <th scope="col">Status</th>
+            <th scope="col">Measured</th>
+            <th scope="col">Threshold</th>
+            <th scope="col">Explanation</th>
+          </tr>
+        </thead>
+        <tbody id="gates"></tbody>
+      </table>
+    </section>
+
+    <div id="error" class="alert alert-error" hidden></div>
+  </main>
+</BaseLayout>
+
+<script>
+  import { api } from "../lib/api-client";
+
+  const PASSING = {
+    page_count: 2,
+    header_alignments: ["center"],
+    full_header_pages: [1],
+    body_left_margin_mm: 18.0,
+    bullet_marker_x_mm: [18.0],
+    bottom_whitespace_mm: [23.0, 18.0],
+    section_gaps_pt: [10.0],
+    links_clickable: true,
+    text_extractable: true,
+  };
+  const FAILING = { ...PASSING, bottom_whitespace_mm: [52.0, 18.0] };
+
+  const statusLine = document.getElementById("backend-status");
+  const form = document.getElementById("preview-form");
+  const reviewIdInput = document.getElementById("review-id");
+  const measurementsInput = document.getElementById("measurements");
+  const resultSection = document.getElementById("result");
+  const resultStatus = document.getElementById("result-status");
+  const resultSummary = document.getElementById("result-summary");
+  const findingsBox = document.getElementById("findings");
+  const gatesBody = document.getElementById("gates");
+  const errorBox = document.getElementById("error");
+
+  function el(tag, cls, text) {
+    const node = document.createElement(tag);
+    if (cls) node.className = cls;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+
+  function showError(message) {
+    errorBox.hidden = false;
+    errorBox.textContent = "";
+    errorBox.appendChild(el("strong", null, "Review failed: "));
+    errorBox.appendChild(document.createTextNode(message));
+  }
+
+  function renderResult(review) {
+    errorBox.hidden = true;
+    resultSection.hidden = false;
+    resultStatus.textContent = review.status;
+    resultStatus.className =
+      "badge " + (review.status === "COMPLETED" ? "badge-passed" : "badge-blocking");
+    resultSummary.textContent = review.summary || "";
+
+    findingsBox.textContent = "";
+    if (review.findings.length === 0) {
+      findingsBox.appendChild(el("p", "form-hint", "No findings. All hard gates passed."));
+    }
+    for (const finding of review.findings) {
+      const card = el("div", "card");
+      const head = el("div", "card-header flex justify-between items-center");
+      head.appendChild(el("h4", "card-title", finding.title));
+      const badge = el(
+        "span",
+        "badge " + (finding.severity === "BLOCKING" ? "badge-blocking" : "badge-advisory"),
+        finding.severity
+      );
+      head.appendChild(badge);
+      card.appendChild(head);
+      card.appendChild(el("p", null, finding.explanation));
+      if (finding.remediation) {
+        const rem = el("p", "form-hint", "");
+        rem.appendChild(el("strong", null, "Remediation: "));
+        rem.appendChild(document.createTextNode(finding.remediation));
+        card.appendChild(rem);
+      }
+      findingsBox.appendChild(card);
+    }
+
+    gatesBody.textContent = "";
+    for (const gate of review.gates) {
+      const row = el("tr", null);
+      row.appendChild(el("td", null, gate.name));
+      const statusCell = el("td", null);
+      statusCell.appendChild(
+        el(
+          "span",
+          "badge " + (gate.status === "PASS" ? "badge-passed" : "badge-blocking"),
+          gate.status
+        )
+      );
+      row.appendChild(statusCell);
+      row.appendChild(el("td", null, String(gate.measured_value ?? "—")));
+      row.appendChild(el("td", null, String(gate.threshold ?? "—")));
+      row.appendChild(el("td", null, gate.explanation));
+      gatesBody.appendChild(row);
+    }
+  }
+
+  async function checkBackend() {
+    try {
+      const health = await api.health();
+      statusLine.textContent =
+        "Backend reachable (contract " + health.api_version + ").";
+    } catch {
+      statusLine.textContent = "";
+      const alert = el("div", "alert alert-error", "");
+      alert.appendChild(el("strong", null, "Backend not reachable. "));
+      alert.appendChild(
+        document.createTextNode("Start it with rrr serve, then retry.")
+      );
+      statusLine.appendChild(alert);
+    }
+  }
+
+  measurementsInput.value = JSON.stringify(PASSING, null, 2);
+  document.getElementById("example-pass").addEventListener("click", () => {
+    measurementsInput.value = JSON.stringify(PASSING, null, 2);
+  });
+  document.getElementById("example-fail").addEventListener("click", () => {
+    measurementsInput.value = JSON.stringify(FAILING, null, 2);
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    let measured;
+    try {
+      measured = JSON.parse(measurementsInput.value);
+    } catch {
+      showError("measurements is not valid JSON.");
+      return;
+    }
+    try {
+      const review = await api.previewReview(reviewIdInput.value.trim(), measured);
+      renderResult(review);
+    } catch (err) {
+      resultSection.hidden = true;
+      showError(err && err.message ? err.code + ": " + err.message : String(err));
+    }
+  });
+
+  checkBackend();
+</script>
+
+<style>
+  main {
+    padding-top: var(--space-2xl);
+    padding-bottom: var(--space-3xl);
+  }
+  section.card {
+    margin-top: var(--space-lg);
+  }
+  section.card:hover {
+    box-shadow: var(--shadow-sm);
+    border-color: var(--color-border);
+  }
+  #findings .card {
+    margin-top: var(--space-md);
+  }
+  #result-summary {
+    font-weight: var(--font-weight-medium);
+  }
+  h3 {
+    margin-top: var(--space-lg);
+  }
+</style>
