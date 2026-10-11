@@ -1,20 +1,26 @@
 /**
  * API client for RRR Resume QA public frontend.
  *
- * All communication with the private backend goes through this client.
- * The backend URL is configured via VITE_API_BASE_URL environment variable.
+ * Speaks only the endpoints the private backend actually serves (see
+ * openapi/resume-qa-v1.open.json). All types come from
+ * src/lib/api-generated.ts, which is regenerated from the backend schema
+ * and never hand-edited.
+ *
+ * Same-origin by default: the Vite dev proxy forwards /api to the loopback
+ * backend, so no CORS configuration is needed. Override with
+ * VITE_API_BASE_URL when the backend lives elsewhere.
  */
 
-import type {
-  ReviewId,
-  ReviewState,
-  ReviewResponse,
-  CreateReviewRequest,
-  CreateReviewResponse,
-  HealthResponse,
-} from "./api-types";
+import type { components } from "./api-generated";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+export type HealthResponse = components["schemas"]["HealthResponse"];
+export type ReviewResult = components["schemas"]["ReviewResult"];
+export type Finding = components["schemas"]["Finding"];
+export type GateResult = components["schemas"]["GateResult"];
+export type ReviewStatus = components["schemas"]["ReviewStatus"];
+export type CVMeasurements = components["schemas"]["CVMeasurements"];
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api/v1";
 
 class ApiError extends Error {
   public readonly code: string;
@@ -58,91 +64,18 @@ export const api = {
     return handleResponse<HealthResponse>(response);
   },
 
-  /** Create a new review session. */
-  async createReview(request: CreateReviewRequest): Promise<CreateReviewResponse> {
-    const response = await fetch(`${API_BASE_URL}/reviews`, {
+  /** Project measurements to a public review under the active contract. */
+  async previewReview(
+    reviewId: string,
+    measured: CVMeasurements
+  ): Promise<ReviewResult> {
+    const response = await fetch(`${API_BASE_URL}/reviews/preview`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: JSON.stringify({ review_id: reviewId, measured }),
     });
-    return handleResponse<CreateReviewResponse>(response);
-  },
-
-  /** Get review status and results. */
-  async getReview(reviewId: ReviewId): Promise<ReviewResponse> {
-    const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-    return handleResponse<ReviewResponse>(response);
-  },
-
-  /** Upload a document for a review. */
-  async uploadDocument(
-    reviewId: ReviewId,
-    file: File,
-    type: "CV" | "VACANCY"
-  ): Promise<void> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("type", type);
-
-    const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/documents`, {
-      method: "POST",
-      body: formData,
-    });
-    await handleResponse<void>(response);
-  },
-
-  /** Start review processing. */
-  async runReview(reviewId: ReviewId): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/run`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    await handleResponse<void>(response);
-  },
-
-  /** Download an artifact. */
-  async downloadArtifact(reviewId: ReviewId, artifactType: string): Promise<Blob> {
-    const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}/artifacts/${artifactType}`, {
-      method: "GET",
-    });
-    if (!response.ok) {
-      throw new ApiError("DOWNLOAD_FAILED", "Failed to download artifact");
-    }
-    return response.blob();
-  },
-
-  /** Poll review until completion or timeout. */
-  async pollReview(
-    reviewId: ReviewId,
-    options: {
-      intervalMs?: number;
-      timeoutMs?: number;
-      onProgress?: (state: ReviewState) => void;
-    } = {}
-  ): Promise<ReviewResponse> {
-    const { intervalMs = 2000, timeoutMs = 120000, onProgress } = options;
-    const startTime = Date.now();
-
-    while (true) {
-      const review = await this.getReview(reviewId);
-      onProgress?.(review.state);
-
-      if (review.state === "COMPLETED" || review.state === "FAILED") {
-        return review;
-      }
-
-      if (Date.now() - startTime > timeoutMs) {
-        throw new ApiError("POLL_TIMEOUT", "Review processing timed out");
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-    }
+    return handleResponse<ReviewResult>(response);
   },
 };
 
 export { ApiError };
-export type { ReviewId, ReviewState, ReviewResponse, CreateReviewRequest, CreateReviewResponse };

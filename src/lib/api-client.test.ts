@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ApiError, api } from "./api-client";
-import type { ReviewId } from "./api-types";
+import type { CVMeasurements, ReviewResult } from "./api-client";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -18,6 +18,28 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
+const MEASURED: CVMeasurements = {
+  page_count: 2,
+  header_alignments: ["center"],
+  full_header_pages: [1],
+  body_left_margin_mm: 18,
+  bottom_whitespace_mm: [23, 18],
+  links_clickable: true,
+  text_extractable: true,
+};
+
+const REVIEW: ReviewResult = {
+  api_version: "resume-qa-v1",
+  id: "r1",
+  status: "COMPLETED",
+  stage: "COMPLETE",
+  created_at: "2026-10-11T00:00:00Z",
+  summary: "All hard gates passed.",
+  findings: [],
+  gates: [],
+  artifacts: [],
+};
+
 describe("ApiError", () => {
   it("carries code, message, and details", () => {
     const err = new ApiError("POLL_TIMEOUT", "timed out", { reviewId: "r1" });
@@ -32,12 +54,11 @@ describe("ApiError", () => {
 describe("api.health", () => {
   it("returns the parsed body on success", async () => {
     mockFetch(async () =>
-      jsonResponse({ status: "healthy", version: "v1", backend: "private-rrr" })
+      jsonResponse({ status: "ok", api_version: "resume-qa-v1" })
     );
     await expect(api.health()).resolves.toEqual({
-      status: "healthy",
-      version: "v1",
-      backend: "private-rrr",
+      status: "ok",
+      api_version: "resume-qa-v1",
     });
   });
 
@@ -59,11 +80,31 @@ describe("api.health", () => {
   });
 });
 
-describe("api.pollReview", () => {
-  it("times out when the review never completes", async () => {
-    mockFetch(async () => jsonResponse({ state: "PROCESSING" }));
-    await expect(
-      api.pollReview("r1" as ReviewId, { intervalMs: 1, timeoutMs: 20 })
-    ).rejects.toMatchObject({ code: "POLL_TIMEOUT" });
+describe("api.previewReview", () => {
+  it("posts review_id and measured in backend shape", async () => {
+    const calls: { url: unknown; init: unknown }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: unknown, init: unknown) => {
+        calls.push({ url, init });
+        return jsonResponse(REVIEW);
+      })
+    );
+    await expect(api.previewReview("r1", MEASURED)).resolves.toEqual(REVIEW);
+    expect(calls).toHaveLength(1);
+    expect(String(calls[0]?.url)).toMatch(/\/reviews\/preview$/);
+    expect(JSON.parse(String((calls[0]?.init as RequestInit)?.body))).toEqual({
+      review_id: "r1",
+      measured: MEASURED,
+    });
+  });
+
+  it("maps backend validation errors to ApiError", async () => {
+    mockFetch(async () =>
+      jsonResponse({ detail: "review_id must not be blank" }, 422)
+    );
+    await expect(api.previewReview("   ", MEASURED)).rejects.toMatchObject({
+      code: "HTTP_422",
+    });
   });
 });
