@@ -1,0 +1,549 @@
+{
+  "components": {
+    "schemas": {
+      "Alignment": {
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "title": "Alignment",
+        "type": "string"
+      },
+      "ArtifactRef": {
+        "additionalProperties": false,
+        "properties": {
+          "download_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque public download reference; never a server filesystem path.",
+            "title": "Download Ref"
+          },
+          "state": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "State",
+            "type": "string"
+          },
+          "type": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "state"
+        ],
+        "title": "ArtifactRef",
+        "type": "object"
+      },
+      "CVMeasurements": {
+        "description": "Renderer/PDF-derived observations used by deterministic gates.",
+        "properties": {
+          "body_left_margin_mm": {
+            "title": "Body Left Margin Mm",
+            "type": "number"
+          },
+          "bottom_whitespace_mm": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Bottom Whitespace Mm",
+            "type": "array"
+          },
+          "bullet_marker_x_mm": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Bullet Marker X Mm",
+            "type": "array"
+          },
+          "content_loss_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Content Loss Count",
+            "type": "integer"
+          },
+          "full_header_pages": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Full Header Pages",
+            "type": "array"
+          },
+          "header_alignments": {
+            "items": {
+              "$ref": "#/components/schemas/Alignment"
+            },
+            "title": "Header Alignments",
+            "type": "array"
+          },
+          "links_clickable": {
+            "title": "Links Clickable",
+            "type": "boolean"
+          },
+          "orphan_heading_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Orphan Heading Count",
+            "type": "integer"
+          },
+          "page_count": {
+            "minimum": 1.0,
+            "title": "Page Count",
+            "type": "integer"
+          },
+          "section_gaps_pt": {
+            "default": [],
+            "items": {
+              "type": "number"
+            },
+            "title": "Section Gaps Pt",
+            "type": "array"
+          },
+          "split_block_count": {
+            "default": 0,
+            "minimum": 0.0,
+            "title": "Split Block Count",
+            "type": "integer"
+          },
+          "text_extractable": {
+            "title": "Text Extractable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page_count",
+          "header_alignments",
+          "full_header_pages",
+          "body_left_margin_mm",
+          "bottom_whitespace_mm",
+          "links_clickable",
+          "text_extractable"
+        ],
+        "title": "CVMeasurements",
+        "type": "object"
+      },
+      "EvidenceKind": {
+        "enum": [
+          "DETERMINISTIC",
+          "EVIDENCE_BASED",
+          "MODEL_ASSISTED"
+        ],
+        "title": "EvidenceKind",
+        "type": "string"
+      },
+      "Finding": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Category",
+            "type": "string"
+          },
+          "evidence_kind": {
+            "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "explanation": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "remediation": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remediation"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/FindingSeverity"
+          },
+          "title": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "severity",
+          "title",
+          "explanation",
+          "evidence_kind"
+        ],
+        "title": "Finding",
+        "type": "object"
+      },
+      "FindingSeverity": {
+        "enum": [
+          "BLOCKING",
+          "ADVISORY"
+        ],
+        "title": "FindingSeverity",
+        "type": "string"
+      },
+      "GateResult": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Explanation",
+            "type": "string"
+          },
+          "measured_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured Value"
+          },
+          "name": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GateStatus"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "name",
+          "status",
+          "explanation"
+        ],
+        "title": "GateResult",
+        "type": "object"
+      },
+      "GateStatus": {
+        "enum": [
+          "PASS",
+          "FAIL"
+        ],
+        "title": "GateStatus",
+        "type": "string"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "properties": {
+          "api_version": {
+            "const": "resume-qa-v1",
+            "default": "resume-qa-v1",
+            "title": "Api Version",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "PreviewRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "measured": {
+            "$ref": "#/components/schemas/CVMeasurements"
+          },
+          "review_id": {
+            "minLength": 1,
+            "title": "Review Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "review_id",
+          "measured"
+        ],
+        "title": "PreviewRequest",
+        "type": "object"
+      },
+      "ReviewResult": {
+        "additionalProperties": false,
+        "properties": {
+          "api_version": {
+            "const": "resume-qa-v1",
+            "default": "resume-qa-v1",
+            "title": "Api Version",
+            "type": "string"
+          },
+          "artifacts": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ArtifactRef"
+            },
+            "title": "Artifacts",
+            "type": "array"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "findings": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/Finding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "gates": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/GateResult"
+            },
+            "title": "Gates",
+            "type": "array"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/ReviewStage"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ReviewStatus"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "stage",
+          "created_at"
+        ],
+        "title": "ReviewResult",
+        "type": "object"
+      },
+      "ReviewStage": {
+        "enum": [
+          "INTAKE",
+          "EXTRACTION",
+          "ANALYSIS",
+          "RENDERING",
+          "MEASUREMENT",
+          "VERIFICATION",
+          "COMPLETE"
+        ],
+        "title": "ReviewStage",
+        "type": "string"
+      },
+      "ReviewStatus": {
+        "enum": [
+          "CREATED",
+          "READY",
+          "PROCESSING",
+          "VERIFYING",
+          "COMPLETED",
+          "FAILED"
+        ],
+        "title": "ReviewStatus",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "RRR Resume QA (private loopback facade)",
+    "version": "resume-qa-v1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health"
+      }
+    },
+    "/api/v1/reviews/preview": {
+      "post": {
+        "operationId": "preview_review_api_v1_reviews_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Review"
+      }
+    }
+  }
+}
