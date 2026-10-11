@@ -2,7 +2,8 @@
 #
 # Run the Resume QA App (private backend + public frontend) from anywhere.
 #
-#   bash /path/to/rrr-resume-web/scripts/run-app.sh [up|down|status]
+#   rrr-dev [up|down|status]      # needs ~/.local/bin on PATH (one-time):
+#                                  ln -sf "$PWD/scripts/rrr-dev.sh" ~/.local/bin/rrr-dev
 #   npm run app            # up      (from the frontend checkout)
 #   npm run app:stop       # down
 #   npm run app:status     # status
