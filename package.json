@@ -11,7 +11,10 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "generate:types": "bash scripts/generate-types.sh"
+    "generate:types": "bash scripts/generate-types.sh",
+    "app": "bash scripts/rrr-dev.sh up",
+    "app:stop": "bash scripts/rrr-dev.sh down",
+    "app:status": "bash scripts/rrr-dev.sh status"
   },
   "dependencies": {
     "astro": "^4.16.0",
