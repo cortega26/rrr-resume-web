@@ -49,7 +49,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </p>
         </div>
         <div class="flex gap-sm">
-          <button class="btn btn-primary" type="submit">Run preview</button>
+          <button class="btn btn-primary" type="submit" id="run-btn">Run preview</button>
           <button class="btn btn-secondary" type="button" id="example-pass">
             Passing example
           </button>
@@ -66,6 +66,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         <span id="result-status" class="badge badge-neutral">—</span>
       </div>
       <p id="result-summary"></p>
+      <p id="result-meta" class="form-hint"></p>
       <h3>Findings</h3>
       <div id="findings"></div>
       <h3>Gate results</h3>
@@ -110,6 +111,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
   const resultSection = document.getElementById("result");
   const resultStatus = document.getElementById("result-status");
   const resultSummary = document.getElementById("result-summary");
+  const resultMeta = document.getElementById("result-meta");
+  const runButton = document.getElementById("run-btn");
   const findingsBox = document.getElementById("findings");
   const gatesBody = document.getElementById("gates");
   const errorBox = document.getElementById("error");
@@ -135,6 +138,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     resultStatus.className =
       "badge " + (review.status === "COMPLETED" ? "badge-passed" : "badge-blocking");
     resultSummary.textContent = review.summary || "";
+    resultMeta.textContent =
+      "Review " + review.id + " · completed " + (review.completed_at || "—");
 
     findingsBox.textContent = "";
     if (review.findings.length === 0) {
@@ -214,12 +219,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       showError("measurements is not valid JSON.");
       return;
     }
+    runButton.disabled = true;
+    statusLine.textContent = "Running preview…";
     try {
       const review = await api.previewReview(reviewIdInput.value.trim(), measured);
       renderResult(review);
     } catch (err) {
       resultSection.hidden = true;
       showError(err && err.message ? err.code + ": " + err.message : String(err));
+    } finally {
+      runButton.disabled = false;
+      statusLine.textContent = "";
     }
   });
 
